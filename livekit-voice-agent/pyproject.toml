@@ -2,4 +2,10 @@
 name = "livekit-voice-agent"
 version = "0.1.0"
 requires-python = ">=3.11"
-dependencies = []
+dependencies = [
+    "livekit-agents>=1.5.1",
+    "livekit-plugins-noise-cancellation>=0.2.5",
+    "livekit-plugins-silero>=1.5.1",
+    "livekit-plugins-turn-detector>=1.5.1",
+    "python-dotenv>=1.2.2",
+]
