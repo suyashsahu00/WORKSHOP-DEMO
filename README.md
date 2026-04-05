@@ -33,6 +33,26 @@
 
 ---
 
+## 📸 Demo Screenshots
+
+<details>
+<summary>🖥️ <strong>Local Console Testing Demo</strong> — click to expand</summary>
+<br>
+
+![Local Console Testing](LocalTestConsoleImage.png)
+
+</details>
+
+<details>
+<summary>☁️ <strong>LiveKit Cloud Deployment Demo</strong> — click to expand</summary>
+<br>
+
+![Deployment Demo](DeploymentDemoImage.png)
+
+</details>
+
+---
+
 ## 🏗️ Tech Stack
 
 | Category | Provider | Model / Details |
@@ -134,6 +154,8 @@ LIVEKIT_API_KEY=your_api_key_here
 LIVEKIT_API_SECRET=your_api_secret_here
 ```
 
+> 🔑 **Get your API keys here:** [LiveKit Cloud API Keys](https://cloud.livekit.io/projects/p_1m80xilkwqg/settings/keys)
+
 > **Note:** All model inference (OpenAI, AssemblyAI, Cartesia, Deepgram, Inworld) runs via **LiveKit Cloud Inference** — no separate API keys needed!
 
 ---
@@ -210,6 +232,7 @@ lk agent deploy
 | Resource | Link |
 |---|---|
 | 🔗 Workshop Tutorial | [Building Production-Ready Voice Agents with LiveKit](https://worksh.app/tutorials/livekit-voice-agent/introduction) |
+| 🔑 LiveKit API Keys | [cloud.livekit.io → API Keys](https://cloud.livekit.io/projects/p_1m80xilkwqg/settings/keys) |
 | 📖 LiveKit Agents Docs | [docs.livekit.io/agents](https://docs.livekit.io/agents) |
 | 🧪 Agents Playground | [agents-playground.livekit.io](https://agents-playground.livekit.io) |
 | 💬 LiveKit Community | [LiveKit Slack](https://livekit.io/slack) |
