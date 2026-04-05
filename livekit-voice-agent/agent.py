@@ -1,151 +1,82 @@
 import logging
-import time
-import httpx
-
 from dotenv import load_dotenv
+
 from livekit.agents import (
     Agent,
     AgentSession,
-    AgentStateChangedEvent,
     JobContext,
     RoomInputOptions,
-    RunContext,
     WorkerOptions,
     cli,
     function_tool,
-    llm,
-    mcp,
-    metrics,
-    stt,
-    tts,
+    RunContext,
     inference,
-    ToolError,
 )
-from livekit.agents.metrics import ModelUsageCollector
-from livekit.plugins.turn_detector.multilingual import MultilingualModel
 from livekit.plugins import noise_cancellation, silero
+from livekit.plugins.turn_detector.multilingual import MultilingualModel
 
 load_dotenv()
+logger = logging.getLogger(__name__)
 
-logger = logging.getLogger("voice-agent")
+
+class ManagerAgent(Agent):
+    def __init__(self, chat_ctx=None):
+        super().__init__(
+            instructions=(
+                "You are a customer service manager. "
+                "You handle escalated issues that frontline agents could not resolve. "
+                "Be empathetic, professional, and solution-focused. "
+                "You have authority to offer refunds, credits, or other accommodations."
+            ),
+            chat_ctx=chat_ctx,
+            tts=inference.TTS(
+                model="cartesia/sonic-3",
+                voice="6f84f4b8-58a2-430c-8c79-688dad597532",
+            ),
+        )
+
+    async def on_enter(self) -> None:
+        await self.session.generate_reply(
+            instructions=(
+                "Introduce yourself as the customer service manager and ask how you can help."
+            )
+        )
 
 
 class Assistant(Agent):
     def __init__(self) -> None:
         super().__init__(
             instructions=(
-                "You are Sydney, a cheerful and friendly weather girl who loves talking about the weather. "
-                "You provide accurate and engaging weather updates for any location asked. "
-                "You use fun, expressive language to describe weather conditions like 'oh it's gloriously sunny!' or 'brrr, bundle up, it's freezing out there!'. "
-                "You keep replies short, warm, and conversational. "
-                "You can also look up the weather if asked. "
-                "You can also answer questions about LiveKit by searching the documentation. "
-                "When users ask about LiveKit features, APIs, or how to build something, use the docs search tools to find accurate information. "
-                "If asked about topics outside weather and LiveKit, kindly redirect the conversation back to your specialties."
-            ),
-            mcp_servers=[
-                mcp.MCPServerHTTP(url="https://docs.livekit.io/mcp"),
-            ],
+                "You are a friendly customer service representative. "
+                "Help customers with general inquiries. "
+                "If they ask for a manager or you cannot resolve their issue, "
+                "use the escalate_to_manager tool immediately."
+            )
         )
 
-    @function_tool
-    async def lookup_weather(self, context: RunContext, location: str) -> dict:
-        """Look up current weather for a location.
+    async def on_enter(self) -> None:
+        await self.session.generate_reply(
+            instructions="Greet the user warmly and offer your assistance."
+        )
 
-        Args:
-            location: City name or location to get weather for.
-        """
-        await context.session.say("Let me check the weather for that!")
-        logger.info("Looking up weather for %s", location)
-
-        async with httpx.AsyncClient() as client:
-            # First, geocode the location to get coordinates
-            geo_response = await client.get(
-                "https://geocoding-api.open-meteo.com/v1/search",
-                params={"name": location, "count": 1},
-            )
-            geo_data = geo_response.json()
-
-            if not geo_data.get("results"):
-                raise ToolError(f"Location '{location}' not found.")
-
-            result = geo_data["results"][0]
-            lat = result["latitude"]
-            lon = result["longitude"]
-            city_name = result["name"]
-            country = result.get("country", "")
-
-            # Fetch weather using coordinates
-            weather_response = await client.get(
-                "https://api.open-meteo.com/v1/forecast",
-                params={
-                    "latitude": lat,
-                    "longitude": lon,
-                    "current": "temperature_2m,wind_speed_10m,weather_code",
-                    "temperature_unit": "celsius",
-                },
-            )
-            weather_data = weather_response.json()
-            current = weather_data.get("current", {})
-
-            return {
-                "location": f"{city_name}, {country}",
-                "temperature_celsius": current.get("temperature_2m"),
-                "wind_speed_kmh": current.get("wind_speed_10m"),
-                "weather_code": current.get("weather_code"),
-                "timestamp": time.strftime("%Y-%m-%d %H:%M:%S"),
-            }
+    @function_tool()
+    async def escalate_to_manager(self, context: RunContext):
+        """Transfer the customer to a manager when requested or when you cannot resolve the issue."""
+        return ManagerAgent(chat_ctx=self.chat_ctx), "Transferring you to a manager now."
 
 
 async def entrypoint(ctx: JobContext):
+    await ctx.connect()
+
     session = AgentSession(
-        stt=stt.FallbackAdapter(
-            [
-                inference.STT.from_model_string("assemblyai/universal-streaming:en"),
-                inference.STT.from_model_string("deepgram/nova-3"),
-            ]
-        ),
-        llm=llm.FallbackAdapter(
-            [
-                inference.LLM(model="openai/gpt-4.1-mini"),
-                inference.LLM(model="google/gemini-2.5-flash"),
-            ]
-        ),
-        tts=tts.FallbackAdapter(
-            [
-                inference.TTS.from_model_string(
-                    "cartesia/sonic-3:9626c31c-bec5-4cca-baa8-f8ba9e84c8bc"
-                ),
-                inference.TTS.from_model_string("inworld/inworld-tts-1"),
-            ]
+        stt=inference.STT.from_model_string("assemblyai/universal-streaming:en"),
+        llm=inference.LLM(model="openai/gpt-4.1-mini"),
+        tts=inference.TTS.from_model_string(
+            "cartesia/sonic-3:9626c31c-bec5-4cca-baa8-f8ba9e84c8bc"
         ),
         vad=silero.VAD.load(),
         turn_detection=MultilingualModel(),
-        preemptive_generation=True,
-        mcp_servers=[
-            mcp.MCPServerHTTP(url="https://docs.livekit.io/mcp"),
-        ],
     )
-
-    # ── Metrics & Usage Tracking ─────────────────────────────────────────────
-    usage_collector = ModelUsageCollector()
-
-    @session.on("session_usage_updated")
-    def _on_session_usage_updated(ev):
-        logger.info("Session usage: %s", ev.usage)
-        usage_collector.collect(ev.usage)
-
-    @session.on("agent_state_changed")
-    def _on_agent_state_changed(ev: AgentStateChangedEvent):
-        if ev.new_state == "speaking":
-            logger.info("Agent started speaking (state -> speaking)")
-
-    async def log_usage():
-        summary = usage_collector.get_summary()
-        logger.info("Usage summary: %s", summary)
-
-    ctx.add_shutdown_callback(log_usage)
-    # ─────────────────────────────────────────────────────────────────────────
 
     await session.start(
         agent=Assistant(),
@@ -154,8 +85,6 @@ async def entrypoint(ctx: JobContext):
             noise_cancellation=noise_cancellation.BVC(),
         ),
     )
-
-    await ctx.connect()
 
 
 if __name__ == "__main__":
