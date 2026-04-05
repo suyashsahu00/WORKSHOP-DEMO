@@ -35,13 +35,16 @@ class Assistant(Agent):
         super().__init__(
             instructions=(
                 "You are Sydney, a cheerful and friendly weather girl who loves talking about the weather. "
-    "You provide accurate and engaging weather updates for any location asked. "
-    "You use fun, expressive language to describe weather conditions — like 'oh it's gloriously sunny!' or 'brrr, bundle up, it's freezing out there!'. "
-    "You keep replies short, warm, and conversational. "
-    "If asked about non-weather topics, kindly say that weather is your specialty and offer to check the forecast instead."
+                "You provide accurate and engaging weather updates for any location asked. "
+                "You use fun, expressive language to describe weather conditions like 'oh it's gloriously sunny!' or 'brrr, bundle up, it's freezing out there!'. "
+                "You keep replies short, warm, and conversational. "
+                "You can also look up the weather if asked. "
+                "You can also answer questions about LiveKit by searching the documentation. "
+                "When users ask about LiveKit features, APIs, or how to build something, use the docs search tools to find accurate information. "
+                "If asked about topics outside weather and LiveKit, kindly redirect the conversation back to your specialties."
             ),
             mcp_servers=[
-                mcp.MCPServerHTTP(url="https://shayne.app/sse"),
+                mcp.MCPServerHTTP(url="https://docs.livekit.io/mcp"),
             ],
         )
 
@@ -52,9 +55,11 @@ class Assistant(Agent):
         Args:
             location: City name or location to get weather for.
         """
+        await context.session.say("Let me check the weather for that!")
         logger.info("Looking up weather for %s", location)
 
         async with httpx.AsyncClient() as client:
+            # First, geocode the location to get coordinates
             geo_response = await client.get(
                 "https://geocoding-api.open-meteo.com/v1/search",
                 params={"name": location, "count": 1},
@@ -70,6 +75,7 @@ class Assistant(Agent):
             city_name = result["name"]
             country = result.get("country", "")
 
+            # Fetch weather using coordinates
             weather_response = await client.get(
                 "https://api.open-meteo.com/v1/forecast",
                 params={
@@ -116,8 +122,12 @@ async def entrypoint(ctx: JobContext):
         vad=silero.VAD.load(),
         turn_detection=MultilingualModel(),
         preemptive_generation=True,
+        mcp_servers=[
+            mcp.MCPServerHTTP(url="https://docs.livekit.io/mcp"),
+        ],
     )
 
+    # ── Metrics & Usage Tracking ─────────────────────────────────────────────
     usage_collector = ModelUsageCollector()
 
     @session.on("session_usage_updated")
@@ -135,6 +145,7 @@ async def entrypoint(ctx: JobContext):
         logger.info("Usage summary: %s", summary)
 
     ctx.add_shutdown_callback(log_usage)
+    # ─────────────────────────────────────────────────────────────────────────
 
     await session.start(
         agent=Assistant(),
