@@ -1,4 +1,6 @@
 import logging
+import time
+import httpx
 
 from dotenv import load_dotenv
 from livekit.agents import (
@@ -7,13 +9,17 @@ from livekit.agents import (
     AgentStateChangedEvent,
     JobContext,
     RoomInputOptions,
+    RunContext,
     WorkerOptions,
     cli,
+    function_tool,
     llm,
+    mcp,
     metrics,
     stt,
     tts,
     inference,
+    ToolError,
 )
 from livekit.agents.metrics import ModelUsageCollector
 from livekit.plugins.turn_detector.multilingual import MultilingualModel
@@ -28,14 +34,61 @@ class Assistant(Agent):
     def __init__(self) -> None:
         super().__init__(
             instructions=(
-                "You are Dr. Sydney, a warm and knowledgeable AI health assistant specializing in liver disease, thyroid disorders, and diabetes. "
-                "You provide clear, accurate, and empathetic responses to patients' health-related questions about these conditions. "
-                "You explain medical information in simple, easy-to-understand language without using heavy jargon. "
-                "You always remind patients to consult a real doctor for diagnosis or treatment decisions. "
-                "Keep your replies concise, caring, and focused only on liver, thyroid, and diabetes-related topics. "
-                "If asked about unrelated medical topics, politely redirect the conversation back to your areas of expertise."
-            )
+                "You are Sydney, a cheerful and friendly weather girl who loves talking about the weather. "
+    "You provide accurate and engaging weather updates for any location asked. "
+    "You use fun, expressive language to describe weather conditions — like 'oh it's gloriously sunny!' or 'brrr, bundle up, it's freezing out there!'. "
+    "You keep replies short, warm, and conversational. "
+    "If asked about non-weather topics, kindly say that weather is your specialty and offer to check the forecast instead."
+            ),
+            mcp_servers=[
+                mcp.MCPServerHTTP(url="https://shayne.app/sse"),
+            ],
         )
+
+    @function_tool
+    async def lookup_weather(self, context: RunContext, location: str) -> dict:
+        """Look up current weather for a location.
+
+        Args:
+            location: City name or location to get weather for.
+        """
+        logger.info("Looking up weather for %s", location)
+
+        async with httpx.AsyncClient() as client:
+            geo_response = await client.get(
+                "https://geocoding-api.open-meteo.com/v1/search",
+                params={"name": location, "count": 1},
+            )
+            geo_data = geo_response.json()
+
+            if not geo_data.get("results"):
+                raise ToolError(f"Location '{location}' not found.")
+
+            result = geo_data["results"][0]
+            lat = result["latitude"]
+            lon = result["longitude"]
+            city_name = result["name"]
+            country = result.get("country", "")
+
+            weather_response = await client.get(
+                "https://api.open-meteo.com/v1/forecast",
+                params={
+                    "latitude": lat,
+                    "longitude": lon,
+                    "current": "temperature_2m,wind_speed_10m,weather_code",
+                    "temperature_unit": "celsius",
+                },
+            )
+            weather_data = weather_response.json()
+            current = weather_data.get("current", {})
+
+            return {
+                "location": f"{city_name}, {country}",
+                "temperature_celsius": current.get("temperature_2m"),
+                "wind_speed_kmh": current.get("wind_speed_10m"),
+                "weather_code": current.get("weather_code"),
+                "timestamp": time.strftime("%Y-%m-%d %H:%M:%S"),
+            }
 
 
 async def entrypoint(ctx: JobContext):
@@ -65,7 +118,6 @@ async def entrypoint(ctx: JobContext):
         preemptive_generation=True,
     )
 
-    # ── Metrics & Usage Tracking ─────────────────────────────────────────────
     usage_collector = ModelUsageCollector()
 
     @session.on("session_usage_updated")
@@ -83,7 +135,6 @@ async def entrypoint(ctx: JobContext):
         logger.info("Usage summary: %s", summary)
 
     ctx.add_shutdown_callback(log_usage)
-    # ─────────────────────────────────────────────────────────────────────────
 
     await session.start(
         agent=Assistant(),
