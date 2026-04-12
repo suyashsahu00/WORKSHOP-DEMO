@@ -227,6 +227,15 @@ lk agent deploy
 
 ---
 
+## 🛠️ Troubleshooting
+
+- **ImportError:** Ensure you have run `uv sync` to install all plugins listed in `pyproject.toml`.
+- **API Key Errors:** Double-check your `.env` file. Ensure `GROQ_API_KEY`, `DEEPGRAM_API_KEY`, and `MURF_API_KEY` are correctly set alongside your LiveKit credentials.
+- **Voice Not Working:** Some voices like "Tanushree" are premium on Murf AI. Ensure your API key has access to the requested voice and model (FALCON/GEN2).
+- **Network Issues:** If running locally, ensure you have a stable internet connection as the STT, LLM, and TTS all communicate with cloud providers.
+
+---
+
 ## 📚 Resources
 
 | Resource | Link |
@@ -243,3 +252,36 @@ lk agent deploy
 ## 🪪 License
 
 MIT License © 2026 [Suyash Sahu](https://github.com/suyashsahu00)
+
+---
+
+## 📍 Updates from `Table_revision` Branch
+
+This branch introduces several high-performance updates to the tech stack:
+
+- 🧠 **High-Performance LLM** — Groq Llama-3.3-70b-versatile
+- 🗣️ **Ultra-fast STT** — Deepgram Nova-2
+- 🔊 **Premium TTS** — Murf AI (Tanushree Voice · FALCON Model)
+
+### Updated Tech Stack Table (`Table_revision`)
+| Category | Provider | Model / Details |
+|---|---|---|
+| **LLM** | Groq | `llama-3.3-70b-versatile` |
+| **STT** | Deepgram | `nova-2` |
+| **TTS** | Murf AI | `Tanushree` (FALCON model) |
+
+### Required API Keys (for `Table_revision`)
+
+To use the features from this branch, get your keys from the following consoles and add them to your `.env` file:
+
+- **Groq:** [console.groq.com](https://console.groq.com)
+- **Deepgram:** [console.deepgram.com](https://console.deepgram.com)
+- **Murf AI:** [murf.ai/api](https://murf.ai/api)
+
+```env
+GROQ_API_KEY=your_groq_api_key_here
+DEEPGRAM_API_KEY=your_deepgram_api_key_here
+MURF_API_KEY=your_murf_api_key_here
+```
+
+
