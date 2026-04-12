@@ -19,9 +19,9 @@
 ## ✨ Features
 
 - 🎤 **Real-time voice conversation** via WebRTC (LiveKit)
-- 🧠 **Multi-model LLM fallback** — OpenAI GPT-4.1 Mini → Google Gemini 2.5 Flash
-- 🗣️ **Multi-model STT fallback** — AssemblyAI Universal Streaming → Deepgram Nova-3
-- 🔊 **Multi-model TTS fallback** — Cartesia Sonic-3 → Inworld TTS-1
+- 🧠 **High-Performance LLM** — Groq Llama-3.3-70b-versatile
+- 🗣️ **Ultra-fast STT** — Deepgram Nova-2
+- 🔊 **Premium TTS** — Murf AI (Tanushree Voice · FALCON Model)
 - 🔇 **Background noise cancellation** via LiveKit BVC
 - 🛑 **Semantic Turn Detection** — no awkward mid-sentence interruptions (`MultilingualModel`)
 - ⚡ **Preemptive generation** for ultra-low latency responses
@@ -57,13 +57,9 @@
 
 | Category | Provider | Model / Details |
 |---|---|---|
-| **LLM (Primary)** | OpenAI | `gpt-4.1-mini` |
-| **LLM (Fallback)** | Google | `gemini-2.5-flash` |
-| **STT (Primary)** | AssemblyAI | `universal-streaming:en` |
-| **STT (Fallback)** | Deepgram | `nova-3` |
-| **TTS — Assistant** | Cartesia | `sonic-3` · voice `9626c31c-bec5-4cca-baa8-f8ba9e84c8bc` |
-| **TTS — Manager** | Cartesia | `sonic-3` · voice `6f84f4b8-58a2-430c-8c79-688dad597532` |
-| **TTS (Fallback)** | Inworld | `inworld-tts-1` |
+| **LLM** | Groq | `llama-3.3-70b-versatile` |
+| **STT** | Deepgram | `nova-2` |
+| **TTS** | Murf AI | `Tanushree` (FALCON model) |
 | **VAD** | Silero | — |
 | **Turn Detection** | LiveKit | `MultilingualModel` (semantic) |
 | **Noise Cancellation** | LiveKit | BVC |
@@ -152,11 +148,20 @@ Open `.env` and fill in your LiveKit credentials:
 LIVEKIT_URL=wss://your-project.livekit.cloud
 LIVEKIT_API_KEY=your_api_key_here
 LIVEKIT_API_SECRET=your_api_secret_here
+
+# Provider API Keys
+GROQ_API_KEY=your_groq_api_key_here
+DEEPGRAM_API_KEY=your_deepgram_api_key_here
+MURF_API_KEY=your_murf_api_key_here
 ```
 
-> 🔑 **Get your API keys here:** [LiveKit Cloud API Keys](https://cloud.livekit.io/projects/p_1m80xilkwqg/settings/keys)
+> 🔑 **Get your API keys here:**
+> - [LiveKit Cloud](https://cloud.livekit.io)
+> - [Groq Console](https://console.groq.com)
+> - [Deepgram Console](https://console.deepgram.com)
+> - [Murf AI API](https://murf.ai/api)
 
-> **Note:** All model inference (OpenAI, AssemblyAI, Cartesia, Deepgram, Inworld) runs via **LiveKit Cloud Inference** — no separate API keys needed!
+> **Note:** Ensure all provider keys are added to your `.env` file for the agent to function correctly!
 
 ---
 
